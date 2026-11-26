@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -21,6 +22,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +37,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.playcrastination.R
+import com.playcrastination.core.designsystem.formattedDate
 import com.playcrastination.core.designsystem.formattedDuration
 import com.playcrastination.core.designsystem.GameArtwork
 import com.playcrastination.core.designsystem.OrbitArtwork
@@ -47,19 +50,34 @@ import com.playcrastination.core.designsystem.StatusTag
 import com.playcrastination.core.designsystem.label
 import com.playcrastination.domain.model.CompletionGoal
 import com.playcrastination.domain.model.Game
+import com.playcrastination.domain.model.Playthrough
 
 @Composable
 fun GameDetailScreen(
     game: Game,
     busy: Boolean,
     actionError: Boolean,
+    archivedPlaythroughSaved: Boolean,
     onEdit: () -> Unit,
     onSetBacklog: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onStartNewPlaythrough: (Long) -> Unit,
+    onUpdateArchivedPlaythrough: (Playthrough) -> Unit,
+    onAcknowledgeAction: () -> Unit,
+    steamContent: (@Composable () -> Unit)? = null
 ) {
     val scroll = rememberLazyListState()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var confirmNewPlaythrough by rememberSaveable { mutableStateOf(false) }
+    var editedPlaythroughId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val currentPlaythrough = game.currentPlaythrough
     val progress = game.timeProgress()
+    LaunchedEffect(archivedPlaythroughSaved) {
+        if (archivedPlaythroughSaved) {
+            editedPlaythroughId = null
+            onAcknowledgeAction()
+        }
+    }
     LazyColumn(
         state = scroll,
         contentPadding = PaddingValues(bottom = PlaySpacing.Section),
@@ -83,29 +101,50 @@ fun GameDetailScreen(
                     Text(stringResource(R.string.progress_unavailable), color = PlayColors.Muted)
                 }
                 if (progress.aboveEstimate) Text(stringResource(R.string.above_estimate), color = PlayColors.Warning)
-                game.narrativePercent?.let { narrative ->
+                currentPlaythrough.narrativePercent?.let { narrative ->
                     Text(stringResource(R.string.narrative_progress, narrative), color = PlayColors.LightViolet)
                 }
-            }
-        }
-        item { GoalsSection(game) }
-        if (game.description.isNotBlank() || game.genre.isNotBlank() || game.platform.isNotBlank()) {
-            item {
-                Panel(Modifier.fillMaxWidth().padding(horizontal = PlaySpacing.Inset)) {
-                    SectionTitle(stringResource(R.string.general_info))
-                    if (game.description.isNotBlank()) Text(game.description)
-                    if (game.genre.isNotBlank()) {
-                        Text(stringResource(R.string.current_choice, stringResource(R.string.genre), game.genre), color = PlayColors.Muted)
-                    }
-                    if (game.platform.isNotBlank()) {
-                        Text(stringResource(R.string.current_choice, stringResource(R.string.platform), game.platform), color = PlayColors.Muted)
-                    }
+                PlaythroughFacts(currentPlaythrough)
+                if (game.previousPlaythroughs.isNotEmpty()) {
+                    DetailValue(R.string.recorded_all_playthroughs, formattedDuration(game.recordedMinutes))
+                }
+                Button(onClick = onEdit, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.edit_game))
                 }
             }
         }
+        if (steamContent != null) item { steamContent() }
+        item { GoalsSection(game) }
+        item {
+            Panel(Modifier.fillMaxWidth().padding(horizontal = PlaySpacing.Inset)) {
+                SectionTitle(stringResource(R.string.playthrough_history))
+                if (game.previousPlaythroughs.isEmpty()) Text(stringResource(R.string.no_archived_playthroughs), color = PlayColors.Muted)
+                OutlinedButton(
+                    enabled = currentPlaythrough.hasDetails && !busy,
+                    onClick = {
+                        onAcknowledgeAction()
+                        confirmNewPlaythrough = true
+                    }
+                ) { Text(stringResource(R.string.new_playthrough)) }
+                if (!currentPlaythrough.hasDetails) {
+                    Text(stringResource(R.string.playthrough_needs_details), color = PlayColors.Muted)
+                }
+                if (actionError && editedPlaythroughId == null) {
+                    Text(stringResource(R.string.save_error), color = PlayColors.Error)
+                }
+            }
+        }
+        itemsIndexed(game.previousPlaythroughs, key = { _, playthrough -> playthrough.id }) { index, playthrough ->
+            ArchivedPlaythroughCard(playthrough, game.previousPlaythroughs.size - index, busy) {
+                onAcknowledgeAction()
+                editedPlaythroughId = playthrough.id
+            }
+        }
+        item { GameMetadata(game) }
         item {
             Panel(Modifier.fillMaxWidth().padding(horizontal = PlaySpacing.Inset)) {
                 SectionTitle(stringResource(R.string.personal_info))
+                game.rating?.let { Text(stringResource(R.string.game_rating, it), color = PlayColors.Cyan) }
                 Text(stringResource(game.priority.label), color = PlayColors.LightViolet)
                 if (game.favorite) Text(stringResource(R.string.favorite), color = PlayColors.Cyan)
                 if (game.notes.isNotBlank()) Text(game.notes)
@@ -116,9 +155,6 @@ fun GameDetailScreen(
                 Modifier.fillMaxWidth().padding(horizontal = PlaySpacing.Inset),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(onClick = onEdit, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.edit_game))
-                }
                 FilledTonalButton(
                     onClick = { onSetBacklog(game.backlogPosition == null) },
                     enabled = !busy,
@@ -134,6 +170,34 @@ fun GameDetailScreen(
         }
     }
 
+    if (confirmNewPlaythrough) {
+        AlertDialog(
+            onDismissRequest = { confirmNewPlaythrough = false },
+            title = { Text(stringResource(R.string.new_playthrough)) },
+            text = { Text(stringResource(R.string.new_playthrough_confirmation)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmNewPlaythrough = false
+                    onStartNewPlaythrough(currentPlaythrough.id)
+                }) { Text(stringResource(R.string.create_playthrough)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmNewPlaythrough = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
+    }
+    game.previousPlaythroughs.firstOrNull { it.id == editedPlaythroughId }?.let { selected ->
+        ArchivedPlaythroughDialog(
+            playthrough = selected,
+            busy = busy,
+            actionError = actionError,
+            onDismiss = {
+                editedPlaythroughId = null
+                onAcknowledgeAction()
+            },
+            onSave = onUpdateArchivedPlaythrough
+        )
+    }
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -155,7 +219,7 @@ fun GameDetailScreen(
 @Composable
 private fun DetailHero(game: Game, scrollOffset: () -> Int) {
     Box(Modifier.fillMaxWidth().heightIn(min = 306.dp).clip(MaterialTheme.shapes.large)) {
-        val background = game.bannerUrl.ifBlank { game.coverUrl }
+        val background = game.backgroundUrl.ifBlank { game.bannerUrl.ifBlank { game.coverUrl } }
         val backdrop = Modifier.matchParentSize().graphicsLayer {
             translationY = scrollOffset() * 0.35f
             scaleX = 1.08f
@@ -180,11 +244,33 @@ private fun DetailHero(game: Game, scrollOffset: () -> Int) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 StatusTag(game.status)
                 Text(game.title, style = MaterialTheme.typography.headlineMedium)
-                val metadata = listOfNotNull(game.releaseYear?.toString(), game.genre, game.platform)
+                val metadata = listOfNotNull(game.resolvedReleaseYear?.toString(), game.genres.firstOrNull(),
+                    game.platform.ifBlank { game.platforms.firstOrNull().orEmpty() })
                     .filter { it.isNotBlank() }.joinToString(" · ")
                 if (metadata.isNotBlank()) Text(metadata, color = PlayColors.Muted)
             }
         }
+    }
+}
+
+@Composable
+private fun GameMetadata(game: Game) {
+    val releaseDate = game.releaseDate
+    val releaseLabel = if (releaseDate != null) formattedDate(releaseDate) else game.releaseYear?.toString().orEmpty()
+    if (listOf(game.originalTitle, game.description, game.developer, game.publisher, game.genre,
+            game.platform, game.availablePlatforms, releaseLabel).all(String::isBlank)
+    ) return
+
+    Panel(Modifier.fillMaxWidth().padding(horizontal = PlaySpacing.Inset)) {
+        SectionTitle(stringResource(R.string.general_info))
+        DetailValue(R.string.original_title, game.originalTitle)
+        if (game.description.isNotBlank()) Text(game.description)
+        DetailValue(R.string.release_date, releaseLabel)
+        DetailValue(R.string.developer, game.developer)
+        DetailValue(R.string.publisher, game.publisher)
+        DetailValue(R.string.genres_list, game.genres.joinToString())
+        DetailValue(R.string.played_platform, game.platform)
+        DetailValue(R.string.available_platforms, game.availablePlatforms)
     }
 }
 

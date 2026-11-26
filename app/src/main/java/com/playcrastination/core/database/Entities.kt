@@ -23,20 +23,35 @@ data class GameEntity(
     val goal: String,
     val favorite: Boolean,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val originalTitle: String?,
+    val releaseDay: Long?,
+    val developer: String?,
+    val publisher: String?,
+    val availablePlatforms: String?,
+    val backgroundUrl: String?,
+    val rating: Int?
 )
 
 @Entity(
-    tableName = "game_progress",
+    tableName = "playthroughs",
     foreignKeys = [ForeignKey(
         entity = GameEntity::class, parentColumns = ["id"], childColumns = ["gameId"],
         onDelete = ForeignKey.CASCADE
-    )]
+    )],
+    indices = [Index(value = ["gameId", "id"])]
 )
-data class GameProgressEntity(
-    @PrimaryKey val gameId: Long,
+data class PlaythroughEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val gameId: Long,
     val playedMinutes: Int?,
-    val narrativePercent: Int?
+    val narrativePercent: Int?,
+    val startedDay: Long?,
+    val finishedDay: Long?,
+    val lastPlayedDay: Long?,
+    val storyMinutes: Int?,
+    val extrasMinutes: Int?,
+    val otherMinutes: Int?
 )
 
 @Entity(
@@ -65,7 +80,8 @@ data class BacklogEntryEntity(@PrimaryKey val gameId: Long, val position: Long)
 
 data class GameRecord(
     @Embedded val game: GameEntity,
-    @Relation(parentColumn = "id", entityColumn = "gameId") val progress: GameProgressEntity?,
+    @Relation(parentColumn = "id", entityColumn = "gameId") val playthroughs: List<PlaythroughEntity>,
     @Relation(parentColumn = "id", entityColumn = "gameId") val durations: GameDurationEntity?,
-    @Relation(parentColumn = "id", entityColumn = "gameId") val backlog: BacklogEntryEntity?
+    @Relation(parentColumn = "id", entityColumn = "gameId") val backlog: BacklogEntryEntity?,
+    @Relation(parentColumn = "id", entityColumn = "gameId") val steam: SteamLinkEntity?
 )

@@ -48,6 +48,9 @@ import com.playcrastination.domain.model.CompletionGoal
 import com.playcrastination.domain.model.GameStatus
 import com.playcrastination.domain.model.Priority
 import java.text.NumberFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -150,6 +153,11 @@ fun formattedDuration(minutes: Long?): String {
         else -> stringResource(R.string.hours_and_minutes, formatter.format(hours), formatter.format(remainder))
     }
 }
+
+@Composable
+fun formattedDate(date: LocalDate): String = date.format(
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(LocalConfiguration.current.locales[0])
+)
 
 @Composable
 fun BrandMark(modifier: Modifier = Modifier) {

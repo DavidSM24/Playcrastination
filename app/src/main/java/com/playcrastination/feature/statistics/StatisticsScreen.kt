@@ -22,7 +22,7 @@ import com.playcrastination.domain.model.Game
 
 @Composable
 fun StatisticsScreen(games: List<Game>) {
-    val recorded = remember(games) { games.mapNotNull { it.playedMinutes?.toLong() } }
+    val recorded = remember(games) { games.mapNotNull(Game::recordedMinutes) }
     LazyColumn(
         contentPadding = PaddingValues(start = PlaySpacing.Inset, end = PlaySpacing.Inset, bottom = PlaySpacing.Inset),
         verticalArrangement = Arrangement.spacedBy(PlaySpacing.Gap)

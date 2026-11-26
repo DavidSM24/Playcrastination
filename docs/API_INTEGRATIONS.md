@@ -1,24 +1,35 @@
 # Integraciones externas
 
-Actualmente la app solo consulta las imágenes HTTPS configuradas en cada ficha. Coil gestiona la caché y usa OkHttp con límites de conexión y lectura. Se desactivan el tráfico HTTP en claro y las redirecciones hacia un esquema distinto.
+La app usa HTTPS para las imágenes y para las consultas de Steam cuando se configura la cuenta. Coil gestiona la caché de imágenes. Retrofit usa un cliente OkHttp sin redirecciones y con límites de conexión y lectura para las consultas.
 
 | Servicio | Alcance previsto | Estado |
 | --- | --- | --- |
-| Steam Web API | Perfil, biblioteca, actividad reciente, horas y logros cuando la cuenta lo permita. | Pendiente. Verificar privacidad y credenciales por endpoint. |
-| Steam Store | Metadatos bajo demanda y caché. | Pendiente. Evaluar acceso y preparar fallback si se usa appdetails, que carece de documentación oficial. |
+| Steam Web API | Perfil, biblioteca, actividad reciente, horas y logros cuando la cuenta lo permita. | Implementado con clave personal y endpoints de lectura. |
+| Steam Store | Metadatos bajo demanda y caché. | Disponible mediante el endpoint público no documentado `appdetails`, con edición manual como alternativa. |
 | HowLongToBeat | ID, búsqueda y duraciones cuando exista un método permitido. | Disponible la introducción manual y un enlace al sitio. Investigar acceso y condiciones antes de implementar consultas. |
 | YouTube | Búsqueda, validación de vídeos y reproducción visible. | Pendiente. Verificar cuota, condiciones de almacenamiento, vigencia de la selección y políticas del reproductor. |
 | IGDB | Proveedor de metadatos alternativo. | Posible ampliación. |
 
-Retrofit, Kotlin Serialization, WorkManager y Android Keystore se incorporarán con las integraciones correspondientes. Mantener credenciales en un dispositivo cliente ofrece menos protección que mantenerlas en un servidor. Las claves nunca se incluirán en el código ni en exportaciones. Las pruebas de integración deberán usar respuestas simuladas, por ejemplo con MockWebServer.
+Steam usa Retrofit, Kotlin Serialization, WorkManager y Android Keystore. Mantener credenciales en un dispositivo cliente ofrece menos protección que mantenerlas en un servidor. Las claves quedan fuera del código, los logs y las copias de seguridad. Las pruebas de la Web API usan MockWebServer.
 
 ## Steam
 
-El usuario configurará un Steam ID de 64 bits y una clave Web API cifrada con Android Keystore. Verifica los requisitos de autenticación y privacidad de `IPlayerService/GetOwnedGames`, `IPlayerService/GetRecentlyPlayedGames`, `ISteamUser/GetPlayerSummaries` y los endpoints de logros antes de habilitar cada operación. Implementa la fuente remota y el repositorio por separado. El proveedor de metadatos de tienda tendrá su propia interfaz.
+Introduce en la app el SteamID64 del perfil y una **clave personal** de Steam Web API. DataStore guarda el identificador y la clave cifrada con AES-GCM bajo Android Keystore. El encabezado `x-webapi-key` se envía solo a `api.steampowered.com`. La validación comprueba el perfil y el acceso a su biblioteca. Una lista explícitamente vacía se acepta como válida. Una respuesta sin el campo de juegos ni un recuento cero solicita revisar la visibilidad. [Autenticación de Steamworks](https://partner.steamgames.com/doc/webapi_overview/auth) · [Condiciones de la API](https://steamcommunity.com/dev/apiterms)
 
-La importación debe ser progresiva y cancelable y admitir biblioteca completa, juegos seleccionados y actividad reciente. Descarga metadatos individuales bajo demanda. Mantén importación y alta en el backlog como decisiones independientes. La actividad reciente puede sugerir un estado para revisión del usuario.
+| Consulta | Requisito y tratamiento |
+| --- | --- |
+| `IPlayerService/GetOwnedGames/v1` | Clave personal y biblioteca visible. La falta de acceso conserva los datos locales. |
+| `IPlayerService/GetRecentlyPlayedGames/v1` | Clave personal. La actividad visible complementa la biblioteca y sirve para decidir qué jugar manualmente. |
+| `ISteamUser/GetPlayerSummaries/v2` | Clave personal. Solo se consulta el SteamID64 que se configuró. El nombre, avatar y juego en curso dependen de la respuesta. |
+| `ISteamUserStats/GetPlayerAchievements/v1` | Clave personal, identificador del juego y acceso a sus datos. Se solicita por juego y se conserva el valor previo si falla. |
 
-Inicia la sincronización manualmente, mediante gesto de actualización, al arrancar, al volver al primer plano si caducó y con WorkManager cuando haya red. Usa 30 minutos como intervalo configurable inicial y considera la planificación del sistema aproximada. Deduplica por Steam App ID y actualiza solo los campos de Steam. Conserva la última versión válida y las decisiones personales ante errores. Gestiona explícitamente 401, 403, 429 y 5xx con límites de tiempo y reintentos apropiados. Registra cambios en contadores acumulados como snapshots observados.
+[IPlayerService](https://partner.steamgames.com/doc/webapi/IPlayerService) · [ISteamUser](https://partner.steamgames.com/doc/webapi/ISteamUser#GetPlayerSummaries) · [Logros](https://partner.steamgames.com/doc/webapi/ISteamUserStats#GetPlayerAchievements)
+
+Se puede importar toda la biblioteca, los juegos recientes o una selección. La importación deduplica por cuenta y Steam App ID, escribe en lotes de 25 y conserva los lotes completados al cancelar. Importar mantiene vacío el puesto en el backlog. Desconectar conserva las fichas importadas y borra la credencial de las preferencias. El usuario puede ocultar importaciones en la biblioteca activa y volver a mostrarlas.
+
+La sincronización se puede iniciar en Inicio, con el gesto de actualizar, desde Ajustes o desde la ficha de un juego vinculado. WorkManager añade trabajo con conexión al arrancar o volver al primer plano si el último resultado ha caducado, y un trabajo periódico con intervalo inicial de 30 minutos. El sistema determina la hora real de ejecución. Los errores 401 y 403 requieren revisar la cuenta o los permisos. Las respuestas 429 pausan las llamadas según `Retry-After`. Los errores de conexión y los 5xx reciben reintentos limitados. Solo se refrescan los títulos ya importados y se conservan las decisiones personales. Cada cambio observado de minutos acumulados genera un snapshot.
+
+Completar metadatos es una acción por juego que usa `appdetails` de la tienda, con datos en inglés para mantener un formato de fecha estable. El proveedor utiliza una vigencia de 24 horas y completa campos vacíos. Los fallos conservan la ficha editable y el enlace a la tienda. En esta sesión la solicitud pública de prueba a la tienda devolvió HTTP 403 desde el entorno de desarrollo.
 
 ## HowLongToBeat
 

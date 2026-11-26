@@ -17,4 +17,8 @@ El violeta claro y el rojo claro se usan en elementos pequeños para reforzar el
 
 La ficha separa progreso personal, duraciones por objetivo e información. La cabecera puede mostrar una ilustración horizontal, con un degradado que protege la legibilidad del título. El origen se indica como manual cuando la estimación la ha introducido el usuario. Las transiciones y el progreso animado toman su duración de los tokens del tema.
 
+El historial de partidas usa las mismas tarjetas de la ficha y deja siempre visible la acción de guardar en el editor principal. Biblioteca agrupa facetas y ordenación en un cuadro de diálogo. El buscador y el selector de portadas o lista permanecen en la cabecera.
+
+En Backlog, el tirador cian permite arrastrar y la línea del mismo color anticipa dónde se soltará la ficha. El menú contextual ofrece subir y bajar para controlar el orden sin arrastrar. Las previsiones se distinguen de las fechas registradas de cada partida por su etiqueta de inicio y fin estimados. [Gestos en Compose](https://developer.android.com/develop/ui/compose/touch-input/pointer-input/understand-gestures)
+
 Las referencias del encargo orientan la distribución de la información. Clair Obscur y las cifras del ejemplo sirven como caso de prueba de cálculo y no se precargan en la biblioteca.

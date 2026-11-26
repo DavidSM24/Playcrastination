@@ -2,6 +2,8 @@ package com.playcrastination.di
 
 import android.content.Context
 import androidx.room.Room
+import com.playcrastination.core.database.Migration1To2
+import com.playcrastination.core.database.Migration2To3
 import com.playcrastination.core.database.PlayDatabase
 import com.playcrastination.data.repository.DataStorePreferences
 import com.playcrastination.data.repository.RoomGameRepository
@@ -25,6 +27,8 @@ abstract class PersistenceModule {
         @Provides
         @Singleton
         fun database(@ApplicationContext context: Context): PlayDatabase =
-            Room.databaseBuilder(context, PlayDatabase::class.java, "playcrastination.db").build()
+            Room.databaseBuilder(context, PlayDatabase::class.java, "playcrastination.db")
+                .addMigrations(Migration1To2, Migration2To3)
+                .build()
     }
 }

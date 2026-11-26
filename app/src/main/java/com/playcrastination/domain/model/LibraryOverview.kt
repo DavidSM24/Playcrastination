@@ -18,7 +18,7 @@ fun List<Game>.remainingTime(): DurationTotal {
     var known = false
     var unknown = 0
     for (game in this) {
-        val remaining = if (game.hasReachedGoal) 0 else game.timeProgress().remainingMinutes
+        val remaining = game.remainingMinutesForGoal()
         if (remaining == null) {
             unknown++
         } else {
@@ -28,3 +28,6 @@ fun List<Game>.remainingTime(): DurationTotal {
     }
     return DurationTotal(total.takeIf { known }, unknown)
 }
+
+fun Game.remainingMinutesForGoal(): Long? =
+    if (hasReachedGoal) 0L else timeProgress().remainingMinutes?.toLong()

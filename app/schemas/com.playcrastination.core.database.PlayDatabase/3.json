@@ -1,0 +1,540 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "9e72aae90379a8531c659c17bc8e60af",
+    "entities": [
+      {
+        "tableName": "games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `releaseYear` INTEGER, `genre` TEXT NOT NULL, `platform` TEXT NOT NULL, `coverUrl` TEXT NOT NULL, `bannerUrl` TEXT NOT NULL, `description` TEXT NOT NULL, `notes` TEXT NOT NULL, `status` TEXT NOT NULL, `priority` TEXT NOT NULL, `goal` TEXT NOT NULL, `favorite` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `originalTitle` TEXT, `releaseDay` INTEGER, `developer` TEXT, `publisher` TEXT, `availablePlatforms` TEXT, `backgroundUrl` TEXT, `rating` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseYear",
+            "columnName": "releaseYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platform",
+            "columnName": "platform",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bannerUrl",
+            "columnName": "bannerUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goal",
+            "columnName": "goal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "favorite",
+            "columnName": "favorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTitle",
+            "columnName": "originalTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseDay",
+            "columnName": "releaseDay",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "developer",
+            "columnName": "developer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "publisher",
+            "columnName": "publisher",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "availablePlatforms",
+            "columnName": "availablePlatforms",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backgroundUrl",
+            "columnName": "backgroundUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_games_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_games_title` ON `${TABLE_NAME}` (`title`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playthroughs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `gameId` INTEGER NOT NULL, `playedMinutes` INTEGER, `narrativePercent` INTEGER, `startedDay` INTEGER, `finishedDay` INTEGER, `lastPlayedDay` INTEGER, `storyMinutes` INTEGER, `extrasMinutes` INTEGER, `otherMinutes` INTEGER, FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playedMinutes",
+            "columnName": "playedMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "narrativePercent",
+            "columnName": "narrativePercent",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startedDay",
+            "columnName": "startedDay",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "finishedDay",
+            "columnName": "finishedDay",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastPlayedDay",
+            "columnName": "lastPlayedDay",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "storyMinutes",
+            "columnName": "storyMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "extrasMinutes",
+            "columnName": "extrasMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "otherMinutes",
+            "columnName": "otherMinutes",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playthroughs_gameId_id",
+            "unique": false,
+            "columnNames": [
+              "gameId",
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playthroughs_gameId_id` ON `${TABLE_NAME}` (`gameId`, `id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "games",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "game_durations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gameId` INTEGER NOT NULL, `mainMinutes` INTEGER, `extrasMinutes` INTEGER, `completionistMinutes` INTEGER, PRIMARY KEY(`gameId`), FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mainMinutes",
+            "columnName": "mainMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "extrasMinutes",
+            "columnName": "extrasMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "completionistMinutes",
+            "columnName": "completionistMinutes",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gameId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "games",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "backlog_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gameId` INTEGER NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`gameId`), FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gameId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_backlog_entries_position",
+            "unique": true,
+            "columnNames": [
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_backlog_entries_position` ON `${TABLE_NAME}` (`position`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "games",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "steam_links",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gameId` INTEGER NOT NULL, `steamId` TEXT NOT NULL, `appId` INTEGER NOT NULL, `playedMinutes` INTEGER, `recentMinutes` INTEGER, `lastPlayedSeconds` INTEGER, `syncedAtMillis` INTEGER NOT NULL, `hidden` INTEGER NOT NULL, `metadataAtMillis` INTEGER, `unlocked` INTEGER, `achievementCount` INTEGER, PRIMARY KEY(`gameId`), FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appId",
+            "columnName": "appId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playedMinutes",
+            "columnName": "playedMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recentMinutes",
+            "columnName": "recentMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastPlayedSeconds",
+            "columnName": "lastPlayedSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncedAtMillis",
+            "columnName": "syncedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hidden",
+            "columnName": "hidden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metadataAtMillis",
+            "columnName": "metadataAtMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "unlocked",
+            "columnName": "unlocked",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "achievementCount",
+            "columnName": "achievementCount",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gameId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_steam_links_steamId_appId",
+            "unique": true,
+            "columnNames": [
+              "steamId",
+              "appId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_steam_links_steamId_appId` ON `${TABLE_NAME}` (`steamId`, `appId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "games",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "steam_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`steamId` TEXT NOT NULL, `name` TEXT NOT NULL, `avatarUrl` TEXT, `currentGame` TEXT, `lastSyncMillis` INTEGER, PRIMARY KEY(`steamId`))",
+        "fields": [
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarUrl",
+            "columnName": "avatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currentGame",
+            "columnName": "currentGame",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastSyncMillis",
+            "columnName": "lastSyncMillis",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "steamId"
+          ]
+        }
+      },
+      {
+        "tableName": "steam_playtime_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `gameId` INTEGER NOT NULL, `observedAtMillis` INTEGER NOT NULL, `cumulativeMinutes` INTEGER NOT NULL, FOREIGN KEY(`gameId`) REFERENCES `steam_links`(`gameId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observedAtMillis",
+            "columnName": "observedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cumulativeMinutes",
+            "columnName": "cumulativeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_steam_playtime_snapshots_gameId_observedAtMillis",
+            "unique": false,
+            "columnNames": [
+              "gameId",
+              "observedAtMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_steam_playtime_snapshots_gameId_observedAtMillis` ON `${TABLE_NAME}` (`gameId`, `observedAtMillis`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "steam_links",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gameId"
+            ],
+            "referencedColumns": [
+              "gameId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9e72aae90379a8531c659c17bc8e60af')"
+    ]
+  }
+}

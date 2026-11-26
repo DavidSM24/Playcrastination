@@ -24,13 +24,19 @@ import com.playcrastination.core.designsystem.ScreenTitle
 import com.playcrastination.core.designsystem.SectionTitle
 
 @Composable
-fun SettingsScreen(hours: Int, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(hours: Int, viewModel: SettingsViewModel = hiltViewModel(), onSteamSettings: () -> Unit) {
     val error by viewModel.writeError.collectAsStateWithLifecycle()
     LazyColumn(
         contentPadding = PaddingValues(start = PlaySpacing.Inset, end = PlaySpacing.Inset, bottom = PlaySpacing.Inset),
         verticalArrangement = Arrangement.spacedBy(PlaySpacing.Gap)
     ) {
         item { ScreenTitle(stringResource(R.string.settings), stringResource(R.string.settings_intro)) }
+        item {
+            Panel(Modifier.fillMaxWidth()) {
+                SectionTitle(stringResource(R.string.steam))
+                FilledTonalButton(onClick = onSteamSettings) { Text(stringResource(R.string.steam_settings)) }
+            }
+        }
         item {
             Panel(Modifier.fillMaxWidth()) {
                 SectionTitle(stringResource(R.string.play_budget))

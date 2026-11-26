@@ -13,25 +13,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.playcrastination.R
 import com.playcrastination.core.designsystem.BrandMark
+import com.playcrastination.core.designsystem.DailyHoursPicker
+import com.playcrastination.core.designsystem.formattedDate
 import com.playcrastination.core.designsystem.formattedDuration
 import com.playcrastination.core.designsystem.EmptyPanel
 import com.playcrastination.core.designsystem.OrbitArtwork
@@ -39,85 +45,126 @@ import com.playcrastination.core.designsystem.Panel
 import com.playcrastination.core.designsystem.PlayColors
 import com.playcrastination.core.designsystem.PlaySpacing
 import com.playcrastination.core.designsystem.SectionTitle
+import com.playcrastination.domain.model.BacklogOrder
 import com.playcrastination.domain.model.Game
 import com.playcrastination.domain.model.GameStatus
-import com.playcrastination.domain.model.remainingTime
+import com.playcrastination.domain.model.planBacklog
 import com.playcrastination.feature.library.GameRow
+import com.playcrastination.feature.steam.SteamDashboardCard
+import com.playcrastination.feature.steam.SteamTask
+import com.playcrastination.feature.steam.SteamViewModel
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(games: List<Game>, hours: Int, onGame: (Long) -> Unit, onAdd: () -> Unit) {
-    val playing = remember(games) { games.filter { it.status == GameStatus.PLAYING } }
-    val queue = remember(games) { games.filter { it.backlogPosition != null }.sortedBy { it.backlogPosition } }
-    val backlogTime = remember(queue) { queue.remainingTime() }
-    val playingTime = remember(playing) { playing.remainingTime() }
-    val recorded = remember(games) { games.mapNotNull { it.playedMinutes?.toLong() } }
-    LazyColumn(
-        contentPadding = PaddingValues(start = PlaySpacing.Inset, end = PlaySpacing.Inset, bottom = PlaySpacing.Section),
-        verticalArrangement = Arrangement.spacedBy(PlaySpacing.Gap)
-    ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                BrandMark(Modifier.size(27.dp))
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+fun DashboardScreen(
+    games: List<Game>,
+    hours: Int,
+    onGame: (Long) -> Unit,
+    onAdd: () -> Unit,
+    onHoursChange: (Int) -> Unit,
+    hoursError: Boolean,
+    steam: SteamViewModel
+) {
+    val steamConnection by steam.connection.collectAsStateWithLifecycle()
+    val steamUi by steam.ui.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val today = LocalDate.now()
+    val plan = remember(games, hours, today) { planBacklog(games, BacklogOrder.MANUAL, today, hours) }
+    val playing = plan.playing
+    val upNext = plan.queue.filter { it.game.status != GameStatus.PLAYING && !it.game.hasReachedGoal }.take(3)
+    val recorded = remember(games) { games.mapNotNull(Game::recordedMinutes) }
+    val content: @Composable () -> Unit = {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(start = PlaySpacing.Inset, end = PlaySpacing.Inset, bottom = PlaySpacing.Section),
+            verticalArrangement = Arrangement.spacedBy(PlaySpacing.Gap)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BrandMark(Modifier.size(27.dp))
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                }
             }
-        }
-        item { DashboardHero(games.isEmpty(), onAdd) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Metric(games.size.toString(), stringResource(R.string.metric_games), Modifier.weight(1f))
-                Metric(playing.size.toString(), stringResource(R.string.metric_playing), Modifier.weight(1f))
-                Metric(games.count { it.status.isCompleted }.toString(), stringResource(R.string.metric_done), Modifier.weight(1f))
+            item { DashboardHero(games.isEmpty(), onAdd) }
+            if (steamConnection.settings.configured) {
+                item { SteamDashboardCard(steamConnection, steamUi, steam) }
             }
-        }
-        item {
-            Panel(Modifier.fillMaxWidth()) {
-                SectionTitle(stringResource(R.string.pile_of_shame))
-                Text(pluralStringResource(R.plurals.queue_game_count, queue.size, queue.size), color = PlayColors.LightViolet)
-                if (queue.isNotEmpty()) {
-                    Text(stringResource(R.string.known_remaining, formattedDuration(backlogTime.knownMinutes)))
-                    if (backlogTime.unknownGames > 0) {
-                        Text(pluralStringResource(R.plurals.missing_estimates, backlogTime.unknownGames,
-                            backlogTime.unknownGames), color = PlayColors.Muted)
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Metric(games.count { it.steam?.hidden != true }.toString(), stringResource(R.string.metric_games), Modifier.weight(1f))
+                    Metric(games.count { it.status == GameStatus.NOT_STARTED || it.status == GameStatus.ON_HOLD }.toString(),
+                        stringResource(R.string.metric_pending), Modifier.weight(1f))
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Metric(playing.size.toString(), stringResource(R.string.metric_playing), Modifier.weight(1f))
+                    Metric(games.count { it.status.isCompleted }.toString(), stringResource(R.string.metric_done), Modifier.weight(1f))
+                }
+            }
+            item {
+                Panel(Modifier.fillMaxWidth()) {
+                    SectionTitle(stringResource(R.string.pile_of_shame))
+                    Text(pluralStringResource(R.plurals.queue_game_count, plan.queue.size, plan.queue.size),
+                        color = PlayColors.LightViolet)
+                    if (plan.queue.isNotEmpty()) {
+                        Text(stringResource(R.string.known_remaining, formattedDuration(plan.queueTime.knownMinutes)))
+                        if (plan.queueTime.unknownGames > 0) {
+                            Text(pluralStringResource(R.plurals.missing_estimates, plan.queueTime.unknownGames,
+                                plan.queueTime.unknownGames), color = PlayColors.Muted)
+                        }
+                    } else {
+                        Text(stringResource(R.string.queue_empty_body), color = PlayColors.Muted)
                     }
-                    val activeOutsideQueue = playing.filter { it.backlogPosition == null }
-                    val schedule = (queue + activeOutsideQueue).remainingTime()
-                    schedule.finishDate(LocalDate.now(), hours)?.let { finish ->
-                        val locale = LocalConfiguration.current.locales[0]
-                        val date = finish.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
-                        Text(stringResource(R.string.forecast_finish, date, hours), color = PlayColors.Cyan)
+                    if (plan.queue.isNotEmpty() || plan.playing.isNotEmpty()) {
+                        DailyHoursPicker(hours, onHoursChange)
+                        val finish = plan.finishDate
+                        if (finish != null) {
+                            Text(stringResource(R.string.forecast_finish, formattedDate(finish), hours), color = PlayColors.Cyan)
+                        } else {
+                            Text(stringResource(R.string.backlog_forecast_unknown), color = PlayColors.Muted)
+                        }
+                        if (hoursError) Text(stringResource(R.string.save_error), color = PlayColors.Error)
                     }
-                } else {
-                    Text(stringResource(R.string.queue_empty_body), color = PlayColors.Muted)
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionTitle(stringResource(R.string.continue_playing))
+                    if (playing.isEmpty()) {
+                        EmptyPanel(stringResource(R.string.playing_empty), stringResource(R.string.playing_empty_body))
+                    }
+                }
+            }
+            items(playing, key = { "playing-${it.game.id}" }) { active ->
+                GameRow(active.game, { onGame(active.game.id) }, showProgressDetails = true)
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SectionTitle(stringResource(R.string.up_next))
+                    if (upNext.isEmpty()) Text(stringResource(R.string.no_upcoming_games), color = PlayColors.Muted)
+                }
+            }
+            items(upNext, key = { "queue-${it.game.id}" }) { upcoming -> GameRow(upcoming.game, { onGame(upcoming.game.id) }) }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Metric(formattedDuration(recorded.takeIf { it.isNotEmpty() }?.sum()), stringResource(R.string.metric_recorded),
+                        Modifier.weight(1f))
+                    Metric(formattedDuration(plan.playingTime.knownMinutes), stringResource(R.string.metric_active_remaining),
+                        Modifier.weight(1f))
                 }
             }
         }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionTitle(stringResource(R.string.continue_playing))
-                if (playing.isEmpty()) {
-                    EmptyPanel(stringResource(R.string.playing_empty), stringResource(R.string.playing_empty_body))
-                }
-            }
-        }
-        items(playing, key = { "playing-${it.id}" }) { game -> GameRow(game, { onGame(game.id) }) }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SectionTitle(stringResource(R.string.up_next))
-                if (queue.isEmpty()) Text(stringResource(R.string.queue_empty), color = PlayColors.Muted)
-            }
-        }
-        items(queue.take(3), key = { "queue-${it.id}" }) { game -> GameRow(game, { onGame(game.id) }) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Metric(formattedDuration(recorded.takeIf { it.isNotEmpty() }?.sum()), stringResource(R.string.metric_recorded),
-                    Modifier.weight(1f))
-                Metric(formattedDuration(playingTime.knownMinutes), stringResource(R.string.metric_active_remaining),
-                    Modifier.weight(1f))
-            }
-        }
+    }
+    if (steamConnection.settings.configured) {
+        PullToRefreshBox(
+            isRefreshing = steamUi.task == SteamTask.SYNC,
+            onRefresh = steam::sync,
+            content = { content() }
+        )
+    } else {
+        content()
     }
 }
 

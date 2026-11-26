@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playcrastination.domain.model.Game
+import com.playcrastination.domain.model.Playthrough
 import com.playcrastination.domain.repository.GameRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -32,6 +33,7 @@ sealed interface GameAction {
     data object Busy : GameAction
     data object Error : GameAction
     data object Deleted : GameAction
+    data object ArchivedPlaythroughSaved : GameAction
     data class Saved(val id: Long) : GameAction
 }
 
@@ -66,6 +68,16 @@ class GameViewModel @Inject constructor(
     fun setBacklog(inBacklog: Boolean) = perform {
         repository.setBacklog(id, inBacklog)
         GameAction.Idle
+    }
+
+    fun startNewPlaythrough(currentId: Long) = perform {
+        repository.startNewPlaythrough(id, currentId)
+        GameAction.Idle
+    }
+
+    fun updateArchivedPlaythrough(playthrough: Playthrough) = perform {
+        repository.updateArchivedPlaythrough(id, playthrough)
+        GameAction.ArchivedPlaythroughSaved
     }
 
     fun acknowledgeAction() {

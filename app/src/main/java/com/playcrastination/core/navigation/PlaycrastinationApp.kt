@@ -64,7 +64,11 @@ import com.playcrastination.feature.library.LibraryScreen
 import com.playcrastination.feature.library.LibraryState
 import com.playcrastination.feature.library.LibraryViewModel
 import com.playcrastination.feature.settings.SettingsScreen
+import com.playcrastination.feature.settings.SettingsViewModel
 import com.playcrastination.feature.statistics.StatisticsScreen
+import com.playcrastination.feature.steam.SteamGameCard
+import com.playcrastination.feature.steam.SteamSettingsScreen
+import com.playcrastination.feature.steam.SteamViewModel
 
 private enum class Section(@StringRes val title: Int, val icon: ImageVector) {
     DASHBOARD(R.string.dashboard, Icons.Default.Home),
@@ -78,14 +82,20 @@ private enum class Section(@StringRes val title: Int, val icon: ImageVector) {
 
 private const val DetailRoute = "game/{gameId}"
 private const val EditorRoute = "edit/{gameId}"
+private const val SteamSettingsRoute = "steam-settings"
 private val gameArgument = navArgument("gameId") { type = NavType.LongType }
 
 @Composable
-fun PlaycrastinationApp(viewModel: LibraryViewModel = hiltViewModel()) {
+fun PlaycrastinationApp(
+    viewModel: LibraryViewModel = hiltViewModel(),
+    settings: SettingsViewModel = hiltViewModel(),
+    steam: SteamViewModel = hiltViewModel()
+) {
     val navigation = rememberNavController()
     val currentEntry by navigation.currentBackStackEntryAsState()
     val selected = Section.entries.firstOrNull { it.route == currentEntry?.destination?.route }
     val library by viewModel.state.collectAsStateWithLifecycle()
+    val hoursError by settings.writeError.collectAsStateWithLifecycle()
     val addGame = { navigation.navigate("edit/0") { launchSingleTop = true } }
     val showGame: (Long) -> Unit = { id -> navigation.navigate("game/$id") { launchSingleTop = true } }
 
@@ -124,24 +134,39 @@ fun PlaycrastinationApp(viewModel: LibraryViewModel = hiltViewModel()) {
                 exitTransition = { fadeOut(tween(ScreenTransitionMillis)) }
             ) {
                 composable(Section.DASHBOARD.route) {
-                    LibraryContent(library, viewModel::retry) { DashboardScreen(it.games, it.dailyHours, showGame, addGame) }
+                    LibraryContent(library, viewModel::retry) {
+                        DashboardScreen(it.games, it.dailyHours, showGame, addGame, settings::setDailyHours, hoursError, steam)
+                    }
                 }
                 composable(Section.LIBRARY.route) {
                     LibraryContent(library, viewModel::retry) { LibraryScreen(it.games, showGame, addGame) }
                 }
                 composable(Section.BACKLOG.route) {
                     LibraryContent(library, viewModel::retry) {
-                        BacklogScreen(it.games, showGame) { navigation.openSection(Section.LIBRARY) }
+                        BacklogScreen(
+                            it.games,
+                            it.dailyHours,
+                            showGame,
+                            onLibrary = { navigation.openSection(Section.LIBRARY) },
+                            onHoursChange = settings::setDailyHours,
+                            hoursError = hoursError
+                        )
                     }
                 }
                 composable(Section.STATISTICS.route) {
                     LibraryContent(library, viewModel::retry) { StatisticsScreen(it.games) }
                 }
                 composable(Section.SETTINGS.route) {
-                    LibraryContent(library, viewModel::retry) { SettingsScreen(it.dailyHours) }
+                    LibraryContent(library, viewModel::retry) {
+                        SettingsScreen(it.dailyHours, settings) { navigation.navigate(SteamSettingsRoute) }
+                    }
+                }
+                composable(SteamSettingsRoute) {
+                    SteamSettingsScreen(steam) { navigation.popBackStack() }
                 }
                 composable(DetailRoute, arguments = listOf(gameArgument)) { entry ->
                     GamePage(
+                        steam = steam,
                         onBack = { navigation.popBackStack() },
                         onEdit = { navigation.navigate("edit/${entry.arguments?.getLong("gameId")}") },
                         onFinished = { navigation.popBackStack() }
@@ -150,6 +175,7 @@ fun PlaycrastinationApp(viewModel: LibraryViewModel = hiltViewModel()) {
                 composable(EditorRoute, arguments = listOf(gameArgument)) { entry ->
                     val create = entry.arguments?.getLong("gameId") == 0L
                     GamePage(
+                        steam = steam,
                         editor = true,
                         onBack = { navigation.popBackStack() },
                         onFinished = { id ->
@@ -182,6 +208,7 @@ private fun LibraryContent(state: LibraryState, onRetry: () -> Unit, content: @C
 
 @Composable
 private fun GamePage(
+    steam: SteamViewModel,
     onBack: () -> Unit,
     onFinished: (Long?) -> Unit,
     editor: Boolean = false,
@@ -216,8 +243,23 @@ private fun GamePage(
             is GameState.Ready -> if (editor) {
                 GameEditor(value.game, action == GameAction.Busy, action == GameAction.Error, viewModel::save)
             } else {
-                GameDetailScreen(value.game, action == GameAction.Busy, action == GameAction.Error,
-                    onEdit, viewModel::setBacklog, viewModel::delete)
+                val connection by steam.connection.collectAsStateWithLifecycle()
+                val steamUi by steam.ui.collectAsStateWithLifecycle()
+                GameDetailScreen(
+                    game = value.game,
+                    busy = action == GameAction.Busy,
+                    actionError = action == GameAction.Error,
+                    archivedPlaythroughSaved = action == GameAction.ArchivedPlaythroughSaved,
+                    onEdit = onEdit,
+                    onSetBacklog = viewModel::setBacklog,
+                    onDelete = viewModel::delete,
+                    onStartNewPlaythrough = viewModel::startNewPlaythrough,
+                    onUpdateArchivedPlaythrough = viewModel::updateArchivedPlaythrough,
+                    onAcknowledgeAction = viewModel::acknowledgeAction,
+                    steamContent = if (value.game.steam != null) {
+                        { SteamGameCard(value.game, connection, steamUi, steam) }
+                    } else null
+                )
             }
         }
     }

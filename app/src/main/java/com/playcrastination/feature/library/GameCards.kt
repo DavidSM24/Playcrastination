@@ -24,10 +24,12 @@ import com.playcrastination.core.designsystem.GameArtwork
 import com.playcrastination.core.designsystem.PlayColors
 import com.playcrastination.core.designsystem.PlayProgress
 import com.playcrastination.core.designsystem.StatusTag
+import com.playcrastination.core.designsystem.label
 import com.playcrastination.domain.model.Game
+import com.playcrastination.domain.model.remainingMinutesForGoal
 
 @Composable
-fun GameRow(game: Game, onClick: () -> Unit, position: Int? = null) {
+fun GameRow(game: Game, onClick: () -> Unit, showProgressDetails: Boolean = false) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -38,26 +40,28 @@ fun GameRow(game: Game, onClick: () -> Unit, position: Int? = null) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (position != null) {
-                Text(stringResource(R.string.backlog_position, position),
-                    color = PlayColors.Cyan, style = MaterialTheme.typography.labelSmall)
-            }
             GameArtwork(game.coverUrl, game.title, Modifier.size(52.dp, 68.dp).clip(MaterialTheme.shapes.small))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(game.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val progress = game.timeProgress()
-                val meta = listOf(game.genre, game.platform).filter { it.isNotBlank() }.joinToString(" · ")
+                val meta = listOfNotNull(game.genres.firstOrNull(),
+                    game.platform.ifBlank { game.platforms.firstOrNull().orEmpty() }.takeIf(String::isNotBlank))
+                    .joinToString(" · ")
                 if (meta.isNotEmpty()) {
                     Text(meta, color = PlayColors.Muted, style = MaterialTheme.typography.bodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 StatusTag(game.status)
+                if (game.steam != null) SteamBadge()
                 if (progress.percent != null && !game.hasReachedGoal) PlayProgress(progress.percent)
-                if (position != null) {
-                    val remaining = if (game.hasReachedGoal) 0L else progress.remainingMinutes?.toLong()
+                if (showProgressDetails) {
                     Text(
-                        stringResource(R.string.queue_game_duration, formattedDuration(progress.targetMinutes?.toLong()),
-                            formattedDuration(remaining)),
+                        stringResource(R.string.current_choice, stringResource(R.string.goal), stringResource(game.goal.label)),
+                        color = PlayColors.LightViolet, style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        stringResource(R.string.playing_recap, formattedDuration(progress.playedMinutes?.toLong()),
+                            formattedDuration(game.remainingMinutesForGoal())),
                         color = PlayColors.Muted, style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -78,8 +82,14 @@ fun GameTile(game: Game, onClick: () -> Unit) {
             Text(game.title, style = MaterialTheme.typography.titleMedium, minLines = 2, maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
             StatusTag(game.status)
+            if (game.steam != null) SteamBadge()
             val percent = game.timeProgress().percent
             if (percent != null && !game.hasReachedGoal) PlayProgress(percent)
         }
     }
+}
+
+@Composable
+private fun SteamBadge() {
+    Text(stringResource(R.string.steam), color = PlayColors.LightViolet, style = MaterialTheme.typography.labelSmall)
 }

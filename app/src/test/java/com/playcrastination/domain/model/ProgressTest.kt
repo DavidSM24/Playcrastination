@@ -11,7 +11,7 @@ class ProgressTest {
     @Test
     fun calculatesSelectedGoalInMinutes() {
         val game = Game(
-            playedMinutes = 18 * 60,
+            currentPlaythrough = Playthrough(playedMinutes = 18 * 60),
             goal = CompletionGoal.MAIN_STORY,
             durations = Durations(30 * 60, 45 * 60, 65 * 60)
         )
@@ -24,14 +24,14 @@ class ProgressTest {
 
     @Test
     fun boundTimeProgressWithoutSettingCompletionOrNarrativeProgress() {
-        val game = Game(status = GameStatus.PLAYING, playedMinutes = 151, durations = Durations(100))
+        val game = Game(status = GameStatus.PLAYING, currentPlaythrough = Playthrough(playedMinutes = 151), durations = Durations(100))
         val progress = game.timeProgress()
 
         assertEquals(100, progress.percent)
         assertEquals(0, progress.remainingMinutes)
         assertTrue(progress.aboveEstimate)
         assertFalse(game.status.isCompleted)
-        assertNull(game.narrativePercent)
+        assertNull(game.currentPlaythrough.narrativePercent)
     }
 
     @Test
@@ -47,7 +47,7 @@ class ProgressTest {
     @Test
     fun backlogCountsUnknownGamesSeparatelyAndWithholdsIncompleteForecast() {
         val unknown = Game(durations = Durations(180))
-        val known = Game(playedMinutes = 60, durations = Durations(180))
+        val known = Game(currentPlaythrough = Playthrough(playedMinutes = 60), durations = Durations(180))
         val finished = Game(status = GameStatus.MAIN_STORY_COMPLETED)
         val today = LocalDate.of(2026, 11, 26)
 
@@ -65,7 +65,7 @@ class ProgressTest {
         val game = Game(
             status = GameStatus.MAIN_STORY_COMPLETED,
             goal = CompletionGoal.COMPLETIONIST,
-            playedMinutes = 1800,
+            currentPlaythrough = Playthrough(playedMinutes = 1800),
             durations = Durations(1800, 2700, 3900)
         )
 
